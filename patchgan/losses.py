@@ -44,14 +44,6 @@ def fc_tversky(y_true, y_pred, beta, gamma=0.75, batch_mean=True):
     else: 
         return torch.pow(focal_tversky_loss, gamma)
 
-adversarial_loss = nn.BCELoss() 
-
-def generator_loss(generated_img, target_img):
-    #gen_loss = tversky(target_img, generated_img, beta = 0.7)
-    gen_loss = fc_tversky(target_img, generated_img, beta = 0.7, gamma=0.75)
-    return gen_loss
-
-def discriminator_loss(output, label):
-    disc_loss = adversarial_loss(output, label)
-    return disc_loss
-
+# alias
+generator_loss = fc_tversky
+discriminator_loss = nn.BCELoss()
