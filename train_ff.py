@@ -8,12 +8,12 @@ from patchgan import *
 
 mmap_imgs = '../shuffled_data_b_cropped/train_aug_imgs.npy'
 mmap_mask = '../shuffled_data_b_cropped/train_aug_mask.npy'
-batch_size= 64
+batch_size= 12
 traindata = MmapDataGenerator(mmap_imgs, mmap_mask, batch_size)
 
 mmap_imgs_val = '../shuffled_data_b_cropped/valid_aug_imgs.npy'
 mmap_mask_val = '../shuffled_data_b_cropped/valid_aug_mask.npy'
-batch_size= 64
+batch_size= 12
 val_dl = MmapDataGenerator(mmap_imgs_val, mmap_mask_val, batch_size)
 
 GEN_FILTS  = 32
