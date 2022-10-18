@@ -17,6 +17,8 @@ class Transferable():
             if isinstance(param, Parameter):
                 # backwards compatibility for serialized parameters
                 param = param.data
+            if not name in own_state.keys():
+                continue
             if param.shape == own_state[name].data.shape:
                 own_state[name].copy_(param)
 
@@ -179,7 +181,8 @@ class Discriminator(nn.Module, Transferable):
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=False),
                 nn.LeakyReLU(0.2, True),
-                norm_layer(ndf * nf_mult)
+                norm_layer(ndf * nf_mult),
+                nn.Dropout(0.25)
             ]
 
         nf_mult_prev = nf_mult
@@ -187,7 +190,8 @@ class Discriminator(nn.Module, Transferable):
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=False),
             nn.LeakyReLU(0.2, True),
-            norm_layer(ndf * nf_mult)
+            norm_layer(ndf * nf_mult),
+            nn.Dropout(0.25)
         ]
 
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw), nn.Sigmoid()]  # output 1 channel prediction map
