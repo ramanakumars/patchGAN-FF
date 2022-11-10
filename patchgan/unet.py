@@ -16,8 +16,6 @@ class Transferable():
             if isinstance(param, Parameter):
                 # backwards compatibility for serialized parameters
                 param = param.data
-            if name not in own_state.keys():
-                continue
             if param.shape == own_state[name].data.shape:
                 own_state[name].copy_(param)
 
@@ -75,7 +73,7 @@ class UnetSkipConnectionBlock(nn.Module):
             else:
                 model = OrderedDict(chain(down.items(),
                                           [(f'SubModule{layer}',
-                                            submodule)], up.items()))
+                                            submodule)], up.items()))  # down + [submodule] + up
         elif innermost:
             upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
                                         kernel_size=4, stride=2,
@@ -86,7 +84,7 @@ class UnetSkipConnectionBlock(nn.Module):
                               (f'UpAct{layer}', upact),
                               (f'UpNorm{layer}', upnorm)])
             model = OrderedDict(chain(down.items(),
-                                      up.items()))
+                                      up.items()))  # down + [submodule] + up
         else:
             upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
                                         kernel_size=4, stride=2,
@@ -104,12 +102,11 @@ class UnetSkipConnectionBlock(nn.Module):
                                             nn.Dropout(0.5))],
                                           [(f'SubModule{layer}', submodule)],
                                           up.items(),
-                                          [(f'DecDropout{layer}',
-                                            nn.Dropout(0.5))]))
+                                          [(f'DecDropout{layer}', nn.Dropout(0.5))]))
             else:
                 model = OrderedDict(chain(down.items(),
                                           [(f'SubModule{layer}', submodule)],
-                                          up.items()))
+                                          up.items()))  # down + [submodule] + up
 
         self.model = nn.Sequential(model)
 
@@ -122,8 +119,7 @@ class UnetSkipConnectionBlock(nn.Module):
 
 def get_norm_layer():
     """Return a normalization layer
-       For BatchNorm, we use learnable affine parameters and
-       track running statistics (mean/stddev).
+       For BatchNorm, we use learnable affine parameters and track running statistics (mean/stddev).
     """
     norm_type = 'batch'
     if norm_type == 'batch':
@@ -180,8 +176,7 @@ class Discriminator(nn.Module, Transferable):
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult,
                           kernel_size=kw, stride=2, padding=padw, bias=False),
                 nn.LeakyReLU(0.2, True),
-                norm_layer(ndf * nf_mult),
-                nn.Dropout(0.25)
+                norm_layer(ndf * nf_mult)
             ]
 
         nf_mult_prev = nf_mult
@@ -190,8 +185,7 @@ class Discriminator(nn.Module, Transferable):
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult,
                       kernel_size=kw, stride=1, padding=padw, bias=False),
             nn.LeakyReLU(0.2, True),
-            norm_layer(ndf * nf_mult),
-            nn.Dropout(0.25)
+            norm_layer(ndf * nf_mult)
         ]
 
         # output 1 channel prediction map
