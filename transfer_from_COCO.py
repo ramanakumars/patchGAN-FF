@@ -20,7 +20,7 @@ batch_size= 16
 val_dl = MmapDataGenerator(mmap_imgs_val, mmap_mask_val, batch_size)
 
 GEN_FILTS  = 32
-DISC_FILTS = 8
+DISC_FILTS = 16
 ACTIV      = 'relu'
 
 # create the generator
