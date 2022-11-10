@@ -168,7 +168,7 @@ class Trainer:
             train_data.batch_size, 1, 30, 30).to(device)
         self.fake_target_train = torch.zeros(
             train_data.batch_size, 1, 30, 30).to(device)
-        
+
         self.real_target_val = torch.ones(
             val_data.batch_size, 1, 30, 30).to(device)
         self.fake_target_val = torch.zeros(
@@ -305,4 +305,3 @@ class Trainer:
         dfname = discriminator_save.split('/')[-1]
         print(
             f"Loaded checkpoints from {gfname} and {dfname}")
-
