@@ -1,83 +1,68 @@
+import torch
+from torch.utils.data import Dataset
 import numpy as np
-import netCDF4 as nc
+import glob
+import os
+from torchvision.transforms import Compose, RandomCrop, RandomHorizontalFlip, RandomVerticalFlip
+from einops import rearrange
+import rasterio
 
 
-class DataGenerator():
-    def __init__(self, nc_file, batch_size, indices=None):
-        self.nc_file = nc_file
+class FloatingForestsDataset(Dataset):
+    augmentation = None
 
-        self.batch_size = batch_size
+    def __init__(self, imgfolder, maskfolder, size=256, augmentation='randomcrop'):
+        self.images = sorted(glob.glob(os.path.join(imgfolder, "*.tif")))
+        self.masks = sorted(glob.glob(os.path.join(maskfolder, "*.tif")))
+        self.size = size
 
-        if indices is not None:
-            self.indices = indices
-            self.ndata = len(indices)
-        else:
-            with nc.Dataset(nc_file, 'r') as dset:
-                self.ndata = int(dset.dimensions['file'].size)
-            self.indices = np.arange(self.ndata)
+        self.image_ids = [int(os.path.basename(image).replace('.tif', '')) for image in self.images]
+        self.mask_ids = [int(os.path.basename(image).replace('.tif', '')) for image in self.masks]
 
-        print(f"Found data with {self.ndata} images")
+        assert np.all(self.image_ids == self.mask_ids), "Image IDs and Mask IDs do not match!"
 
-    def shuffle(self):
-        np.random.shuffle(self.indices)
+        if augmentation == 'randomcrop':
+            self.augmentation = RandomCrop(size=(size, size))
+        elif augmentation == 'randomcrop+flip':
+            self.augmentation = Compose([
+                RandomCrop(size=(size, size)),
+                RandomHorizontalFlip(0.25),
+                RandomVerticalFlip(0.25)
+            ])
+
+        print(f"Loaded {len(self)} images")
 
     def __len__(self):
-        return self.ndata // self.batch_size
+        return len(self.images)
 
     def __getitem__(self, index):
-        batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
+        image_file = self.images[index]
+        mask_file = self.masks[index]
 
-        with nc.Dataset(self.nc_file, 'r') as dset:
-            imgs = dset.variables['imgs'][batch_indices,
-                                          :, :, :].astype(float) / 255
-            mask = dset.variables['mask'][batch_indices, :, :].astype(float)
+        img = rasterio.open(image_file)
+        img_stacked = np.dstack([img.read(1), img.read(2), img.read(3), img.read(4)])
 
-        return imgs, np.expand_dims(mask, axis=1)
+        # clean up artifacts in the data
+        img_stacked[np.abs(img_stacked) > 1.e20] = 0
+        img_stacked[np.isnan(img_stacked)] = 0
 
-    def get_from_indices(self, indices):
-        with nc.Dataset(self.nc_file, 'r') as dset:
-            imgs = dset.variables['imgs'][indices, :, :, :].astype(float) / 255.
-            mask = dset.variables['mask'][indices, :, :].astype(float)
+        # remove negative signal
+        img_stacked = img_stacked - np.percentile(img_stacked.flatten(), 2)
 
-        return imgs, mask
+        norm = np.nansum(img_stacked, axis=-1, keepdims=True)
+        img_stacked = img_stacked / (norm + 1.e-3)
 
-    def get_meta(self, key, index=None):
-        if index is not None:
-            batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        else:
-            batch_indices = self.indices
+        # normalize the image per-pixel
+        img = np.clip(img_stacked, 0, 1)
+        img[~np.isfinite(img)] = 0.
 
-        with nc.Dataset(self.nc_file, 'r') as dset:
-            var = dset.variables[key][batch_indices]
+        # add the mask so we can crop it
+        mask = rasterio.open(mask_file).read(1)
+        mask[mask < 0.] = 0.
+        data_stacked = np.concatenate((img, np.expand_dims(mask, -1)), axis=-1)
+        data_stacked = rearrange(torch.Tensor(data_stacked), "h w c -> c h w")
 
-        return var
+        if self.augmentation is not None:
+            data_stacked = self.augmentation(data_stacked)
 
-
-class MmapDataGenerator(DataGenerator):
-    def __init__(self, img_file, mask_file, batch_size, indices=None):
-        self.img_file = img_file
-        self.mask_file = mask_file
-
-        self.batch_size = batch_size
-
-        self.imgs = np.load(self.img_file, mmap_mode='r')
-        self.mask = np.load(self.mask_file, mmap_mode='r')
-
-        self.ndata = len(self.imgs)
-
-        if indices is not None:
-            self.indices = indices
-        else:
-            self.indices = np.arange(self.ndata)
-
-        print(f"Found data with {self.ndata} images")
-
-    def __getitem__(self, index):
-        batch_indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-
-        if len(batch_indices) < 1:
-            raise StopIteration
-
-        img = self.imgs[batch_indices, :].astype(float) / 255
-        mask = self.mask[batch_indices, :].astype(float)
-        return img, mask
+        return data_stacked[:4, :, :], data_stacked[4, :, :].unsqueeze(0)

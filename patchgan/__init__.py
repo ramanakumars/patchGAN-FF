@@ -1,9 +1,7 @@
-from .unet import UnetGenerator, Discriminator
-from .io import DataGenerator, MmapDataGenerator
+from .unet import UNet
+from .disc import Discriminator
 from .trainer import Trainer
 
 __all__ = [
-    'UnetGenerator', 'Discriminator',
-    'DataGenerator', 'MmapDataGenerator',
-    'Trainer'
+    'UNet', 'Discriminator', 'Trainer'
 ]

@@ -32,5 +32,4 @@ def fc_tversky(y_true, y_pred, beta, gamma=0.75, batch_mean=True):
 
 
 # alias
-generator_loss = fc_tversky
-discriminator_loss = nn.BCELoss()
+adv_loss = nn.BCELoss()
