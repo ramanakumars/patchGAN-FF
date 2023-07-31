@@ -3,3 +3,4 @@ rasterio==1.2.10
 torch>=1.13.0
 torchvision>=0.14.0
 tqdm==4.62.3
+patchgan>=0.1
