@@ -1,0 +1,28 @@
+dataset: 
+  type: FloatingForestsDataset
+  augmentation: randomcrop+flip
+  size: 256
+  train_data: 
+    images: /home/rsankar/zooniverse/projects/FloatingForests/floating_forests_deeplearning/data/segmentation_b/landsat_tiles/train
+    masks: /home/rsankar/zooniverse/projects/FloatingForests/floating_forests_deeplearning/data/segmentation_b/floating_forests_tiles/train
+  validation_data: 
+    images: /home/rsankar/zooniverse/projects/FloatingForests/floating_forests_deeplearning/data/segmentation_b/landsat_tiles/valid
+    masks: /home/rsankar/zooniverse/projects/FloatingForests/floating_forests_deeplearning/data/segmentation_b/floating_forests_tiles/valid
+model_params:
+  gen_filts: 32
+  disc_filts: 16
+  activation: relu
+  use_dropout: True
+  final_activation: sigmoid
+  n_disc_layers: 5
+checkpoint_path: ./checkpoints/checkpoint-FF-transfer/
+transfer_learn:
+  generator_checkpoint: ./checkpoints/checkpoint-COCO/generator_ep_100.pth
+  discriminator_checkpoint: ./checkpoints/checkpoint-COCO/discriminator_ep_100.pth
+train_params:
+  loss_type: tversky
+  seg_alpha: 200
+  gen_learning_rate: 1.e-3
+  disc_learning_rate: 1.e-3
+  decay_rate: 0.95
+  save_freq: 5
