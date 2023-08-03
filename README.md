@@ -1,5 +1,6 @@
 # patchGAN-FF
-PatchGAN based segmentation model for Floating Forests data
+PatchGAN based segmentation model for Floating Forests data.
+Uses the patchGAN architecture from [here](https://github.com/ramanakumars/patchGAN).
 
 # Installation
 This model is built using the PyTorch framework on Python
